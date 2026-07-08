@@ -48,5 +48,5 @@ class TestModelRouter:
         router.register("task", mock_client)
         result = router.execute("task", [{"role": "user", "content": "hi"}])
 
-        assert result == {"content": "result"}
+        assert result == {"content":  "result"}
         mock_client.chat_completion.assert_called_once()
