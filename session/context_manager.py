@@ -1,4 +1,4 @@
-"""ContextManager — Slide-window message truncation with token/message limits."""
+"""ContextManager —— 基于 token/消息数量的滑动窗口消息截断。"""
 
 from __future__ import annotations
 
@@ -6,11 +6,10 @@ import tiktoken
 
 
 class ContextManager:
-    """Truncates a list of messages to fit within token or message-count limits.
+    """将消息列表截断到 token 或消息数量限制以内。
 
-    System messages are preserved at the top and not counted toward limits
-    when ``preserve_system=True``.  When both ``max_messages`` and ``max_tokens``
-    are set, ``max_tokens`` takes priority.
+    当 ``preserve_system=True`` 时，system 消息会被保留在顶部且不计入限制。
+    当 ``max_messages`` 和 ``max_tokens`` 同时设置时，``max_tokens`` 优先。
     """
 
     def __init__(
@@ -26,20 +25,19 @@ class ContextManager:
         self.model = model
 
     # ------------------------------------------------------------------
-    # Public API
+    # 公共 API
     # ------------------------------------------------------------------
 
     def apply(self, messages: list[dict]) -> tuple[list[dict], int]:
-        """Return a tuple of ``(truncated_messages, kept_count)``.
+        """返回一个 ``(截断后的消息, 保留的消息条数)`` 元组。
 
-        *truncated_messages* is the list of messages that fit within the
-        configured limits.  *kept_count* is the number of **non-system**
-        messages that were retained (starting from the end of the input).
+        *截断后的消息* 是满足配置限制的消息列表。
+        *保留的消息条数* 是从尾部开始保留的 **非 system** 消息的数量。
         """
         if not messages:
             return [], 0
 
-        # 1. Separate system messages from the rest
+        # 1. 将 system 消息与其他消息分离
         if self.preserve_system:
             system_msgs = [m for m in messages if m.get("role") == "system"]
             non_system = [m for m in messages if m.get("role") != "system"]
@@ -47,7 +45,7 @@ class ContextManager:
             system_msgs = []
             non_system = list(messages)
 
-        # 2. Apply truncation on non-system messages (keep from the END)
+        # 2. 对非 system 消息执行截断（从尾部开始保留）
         if self.max_tokens is not None:
             truncated = self._truncate_by_tokens(non_system)
         elif self.max_messages is not None:
@@ -57,22 +55,22 @@ class ContextManager:
 
         kept_count = len(truncated)
 
-        # 3. Prepend system messages back at top
+        # 3. 将 system 消息放回列表顶部
         return system_msgs + truncated, kept_count
 
     @staticmethod
     def count_tokens(messages: list[dict], model: str = "gpt-4o") -> int:
-        """Count total tokens consumed by *messages* using tiktoken."""
+        """使用 tiktoken 计算 *messages* 的总 token 数。"""
         from session._token_utils import count_messages
 
         return count_messages(messages, model)
 
     # ------------------------------------------------------------------
-    # Internal
+    # 内部实现
     # ------------------------------------------------------------------
 
     def _truncate_by_count(self, messages: list[dict]) -> list[dict]:
-        """Keep at most *max_messages* messages from the end."""
+        """从尾部开始，最多保留 *max_messages* 条消息。"""
         if self.max_messages is None:
             return messages
         if len(messages) <= self.max_messages:
@@ -80,11 +78,11 @@ class ContextManager:
         return messages[-self.max_messages :]
 
     def _truncate_by_tokens(self, messages: list[dict]) -> list[dict]:
-        """Keep as many messages from the end as fit within *max_tokens*."""
+        """从尾部开始，保留尽可能多的消息使其 token 总数不超过 *max_tokens*。"""
         if self.max_tokens is None:
             return messages
 
-        # Cache the encoder for this call so we don't create one per message.
+        # 在本方法内缓存编码器，避免每条消息都重复创建
         try:
             enc = tiktoken.encoding_for_model(self.model)
         except KeyError:
@@ -97,7 +95,7 @@ class ContextManager:
                     total += len(enc.encode(v))
             return total
 
-        # Walk from the end, accumulating messages until we'd exceed the budget
+        # 从尾部向前遍历，累积消息直到超出 token 预算
         kept: list[dict] = []
         running_tokens = 0
 
@@ -108,6 +106,6 @@ class ContextManager:
             kept.append(msg)
             running_tokens += msg_tokens
 
-        # Reverse back to original order
+        # 恢复原始顺序
         kept.reverse()
         return kept

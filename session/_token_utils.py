@@ -1,10 +1,10 @@
-"""Shared token counting utilities."""
+"""共享的 Token 计数工具函数。"""
 
 import tiktoken
 
 
 def get_encoder(model: str = "gpt-4o"):
-    """Return a tiktoken encoder for *model*, falling back to cl100k_base."""
+    """获取指定模型的 tiktoken 编码器，失败时降级为 cl100k_base。"""
     try:
         return tiktoken.encoding_for_model(model)
     except KeyError:
@@ -12,7 +12,7 @@ def get_encoder(model: str = "gpt-4o"):
 
 
 def count_messages(messages: list[dict], model: str = "gpt-4o") -> int:
-    """Count total tokens consumed by *messages* (including per-message overhead)."""
+    """计算消息列表的总 token 数（含每条消息 4 token 的固定开销）。"""
     enc = get_encoder(model)
     total = 0
     for msg in messages:
@@ -26,6 +26,6 @@ def count_messages(messages: list[dict], model: str = "gpt-4o") -> int:
 
 
 def count_text(text: str, model: str = "gpt-4o") -> int:
-    """Count tokens for a plain-text string."""
+    """计算纯文本字符串的 token 数。"""
     enc = get_encoder(model)
     return len(enc.encode(text))
