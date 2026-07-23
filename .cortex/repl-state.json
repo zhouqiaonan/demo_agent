@@ -1,0 +1,177 @@
+{
+  "version": 1,
+  "planFilename": "2026-07-23-feature-llm_engine-fallback-.md",
+  "startedAt": "2026-07-23T07:35:51.471Z",
+  "buildCommand": "python -c \"import llm_engine; print('✓ llm_engine import OK')\"",
+  "testCommand": "python -m pytest tests/ -v --tb=short",
+  "lintCommand": null,
+  "maxRetries": 3,
+  "currentTaskIndex": -1,
+  "tasks": [
+    {
+      "index": 0,
+      "description": "创建 `llm_engine/` 包骨架和自定义异常",
+      "acceptanceCriteria": [
+        "`llm_engine/__init__.py`、`exceptions.py` 就位，`AllModelsExhaustedError` 等异常可正常导入",
+        "所有模块文件含完整的中文 docstring 和类型注解"
+      ],
+      "status": "passed",
+      "retries": 0,
+      "iterations": [
+        {
+          "at": "2026-07-23T07:37:00.877Z",
+          "result": "pass",
+          "detail": "创建了 llm_engine/ 包骨架：exceptions.py（4 个异常类：LLMEngineError、TransientError、NonRetryableError、AllModelsExhaustedError）和 __init__.py（导出全部异常）。构建通过，197 个已有测试全部通过。"
+        }
+      ],
+      "startedAt": "2026-07-23T07:36:56.949Z",
+      "completedAt": "2026-07-23T07:37:00.877Z"
+    },
+    {
+      "index": 1,
+      "description": "实现 `RetryConfig` + tenacity 集成",
+      "acceptanceCriteria": [
+        "`RetryConfig` 支持 `max_attempts`、`backoff`（exponential/fixed/linear）、`min_wait`、`max_wait`",
+        "提供装饰器版本 `retry_decorator` 和编程式版本 `Retrying` 对象两种用法",
+        "区分可重试异常（TransientError）和不可重试异常（NonRetryableError）"
+      ],
+      "status": "passed",
+      "retries": 0,
+      "iterations": [
+        {
+          "at": "2026-07-23T07:39:31.297Z",
+          "result": "pass",
+          "detail": "实现了 retry.py：RetryConfig dataclass（3 种退避策略：exponential/fixed/linear）+ create_retry_decorator（声明式）+ build_retrying（编程式）。构建通过，197 个测试全部通过。"
+        }
+      ],
+      "startedAt": "2026-07-23T07:37:00.877Z",
+      "completedAt": "2026-07-23T07:39:31.297Z"
+    },
+    {
+      "index": 2,
+      "description": "实现 `FallbackManager`",
+      "acceptanceCriteria": [
+        "接收 `list[BaseLLMClient]`，按顺序尝试调用",
+        "每个客户端内部使用 tenacity 重试（可配置）",
+        "记录每次切换行为（哪个模型失败、切到哪个）",
+        "所有客户端耗尽时抛出 `AllModelsExhaustedError`"
+      ],
+      "status": "passed",
+      "retries": 0,
+      "iterations": [
+        {
+          "at": "2026-07-23T07:43:01.256Z",
+          "result": "pass",
+          "detail": "实现了 fallback.py：FallbackManager（按序尝试客户端、内置 tenacity 重试、NonRetryableError 中断、AllModelsExhaustedError 携带失败详情）+ execute_with_callbacks（3 个钩子给 metrics/cost 注入）。构建通过，197 个测试全绿。"
+        }
+      ],
+      "startedAt": "2026-07-23T07:39:31.297Z",
+      "completedAt": "2026-07-23T07:43:01.256Z"
+    },
+    {
+      "index": 3,
+      "description": "实现 `LLMMetrics`（prometheus_client）",
+      "acceptanceCriteria": [
+        "定义 `llm_call_total`（Counter，按 model + status 分 label）",
+        "定义 `llm_token_usage_total`（Counter，按 model + type 分 label）",
+        "定义 `llm_latency_seconds`（Histogram，按 model 分 label）",
+        "`record_call()` 方法在一次调用后更新全部指标"
+      ],
+      "status": "passed",
+      "retries": 0,
+      "iterations": [
+        {
+          "at": "2026-07-23T07:44:34.949Z",
+          "result": "pass",
+          "detail": "实现了 metrics.py：LLMMetrics（prometheus_client Counter + Histogram，3 个指标：call_total/token_usage/latency_seconds），record_call/get_summary/reset 方法。构建通过，197 个测试全绿。"
+        }
+      ],
+      "startedAt": "2026-07-23T07:43:01.256Z",
+      "completedAt": "2026-07-23T07:44:34.949Z"
+    },
+    {
+      "index": 4,
+      "description": "实现 `CostTracker`",
+      "acceptanceCriteria": [
+        "内置至少 4 个模型的定价表（gpt-4o、gpt-4o-mini、deepseek-chat、deepseek-reasoner）",
+        "根据 response 中的 `usage` 字段计算单次调用费用",
+        "支持累计费用查询 `get_total_cost()` 和按模型分组的费用查询 `get_cost_by_model()`"
+      ],
+      "status": "passed",
+      "retries": 0,
+      "iterations": [
+        {
+          "at": "2026-07-23T07:45:48.572Z",
+          "result": "pass",
+          "detail": "实现了 cost.py：CostTracker（4 模型定价表 gpt-4o/gpt-4o-mini/deepseek-chat/deepseek-reasoner）、calculate_cost/record_call 方法、累计/分组费用查询。构建通过，197 个测试全绿。"
+        }
+      ],
+      "startedAt": "2026-07-23T07:44:34.949Z",
+      "completedAt": "2026-07-23T07:45:48.572Z"
+    },
+    {
+      "index": 5,
+      "description": "实现 `LLMEngine` 统一入口 + Builder 模式",
+      "acceptanceCriteria": [
+        "`LLMEngine(primary, fallbacks, retry, metrics, cost_tracking)` 直接构造可用",
+        "`LLMEngine.builder()` 流式构造可用（学习 Builder 模式）",
+        "`chat()` 方法串联 Fallback → Retry → Metrics → Cost 全流程",
+        "`stream()` 方法预留接口，首版 raise NotImplementedError"
+      ],
+      "status": "passed",
+      "retries": 0,
+      "iterations": [
+        {
+          "at": "2026-07-23T07:51:24.912Z",
+          "result": "pass",
+          "detail": "实现了 engine.py：LLMEngine（直接构造 + Builder 双模式，chat() 串联 Fallback→Retry→Metrics→Cost 全流程，stream() 预留）+ LLMEngineBuilder（链式 API）。构建通过，197 个测试全绿。"
+        }
+      ],
+      "startedAt": "2026-07-23T07:45:48.572Z",
+      "completedAt": "2026-07-23T07:51:24.912Z"
+    },
+    {
+      "index": 6,
+      "description": "编写测试",
+      "acceptanceCriteria": [
+        "`test_retry.py` — 验证 tenacity 两种方式、不同退避策略",
+        "`test_fallback.py` — 验证模型切换、全部耗尽场景、异常分类",
+        "`test_metrics.py` — 验证 Counter/Histogram 正确递增",
+        "`test_cost.py` — 验证定价计算准确、累计费用正确",
+        "`test_engine.py` — 验证端到端串联、Builder 模式"
+      ],
+      "status": "passed",
+      "retries": 0,
+      "iterations": [
+        {
+          "at": "2026-07-23T07:56:08.012Z",
+          "result": "pass",
+          "detail": "编写了 5 个测试文件：test_retry.py（22 测试）、test_fallback.py（17 测试）、test_metrics.py（14 测试）、test_cost.py（21 测试）、test_engine.py（24 测试）。总计 110 个新测试，+ 原有 197 个 = 307 个全部通过。"
+        }
+      ],
+      "startedAt": "2026-07-23T07:51:24.912Z",
+      "completedAt": "2026-07-23T07:56:08.012Z"
+    },
+    {
+      "index": 7,
+      "description": "编写示例 `examples/llm_engine_demo.py`",
+      "acceptanceCriteria": [
+        "启动 metrics HTTP server，暴露 `/metrics` 端点",
+        "模拟主模型失败 → 降级到备用模型的完整流程",
+        "用 curl 或浏览器可查看 Prometheus 指标"
+      ],
+      "status": "passed",
+      "retries": 0,
+      "iterations": [
+        {
+          "at": "2026-07-23T07:59:04.211Z",
+          "result": "pass",
+          "detail": "创建了 examples/llm_engine_demo.py（348 行，4 个演示：直接构造、Builder、Fallback+Retry、Metrics Server）。构建通过，307 个测试全部通过。"
+        }
+      ],
+      "startedAt": "2026-07-23T07:56:08.012Z",
+      "completedAt": "2026-07-23T07:59:04.211Z"
+    }
+  ],
+  "completedAt": "2026-07-23T07:59:04.211Z"
+}
