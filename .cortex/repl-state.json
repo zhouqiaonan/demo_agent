@@ -1,177 +1,173 @@
 {
   "version": 1,
-  "planFilename": "2026-07-23-feature-llm_engine-fallback-.md",
-  "startedAt": "2026-07-23T07:35:51.471Z",
-  "buildCommand": "python -c \"import llm_engine; print('✓ llm_engine import OK')\"",
-  "testCommand": "python -m pytest tests/ -v --tb=short",
+  "planFilename": "2026-09-01-feature-day-6-embedding-vector_store-.md",
+  "startedAt": "2026-09-01T03:42:06.025Z",
+  "buildCommand": "python -m compileall -q vector_store",
+  "testCommand": "python -m pytest tests/ -q",
   "lintCommand": null,
   "maxRetries": 3,
   "currentTaskIndex": -1,
   "tasks": [
     {
       "index": 0,
-      "description": "创建 `llm_engine/` 包骨架和自定义异常",
+      "description": "Task 1：基础设施与包骨架",
       "acceptanceCriteria": [
-        "`llm_engine/__init__.py`、`exceptions.py` 就位，`AllModelsExhaustedError` 等异常可正常导入",
-        "所有模块文件含完整的中文 docstring 和类型注解"
+        "`requirements.txt` 追加 `chromadb`、`sentence-transformers`（`openai`/`pytest` 已有）",
+        "根目录新增 `docker-compose.yml`，含 Qdrant 服务 + Chroma 的注释说明（不起 Chroma 服务）",
+        "创建 `vector_store/` 目录与 `exceptions.py`（`VectorStoreError` 基类 + `EmbeddingError` + `DimensionMismatchError`）"
       ],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-07-23T07:37:00.877Z",
+          "at": "2026-09-01T03:46:41.599Z",
           "result": "pass",
-          "detail": "创建了 llm_engine/ 包骨架：exceptions.py（4 个异常类：LLMEngineError、TransientError、NonRetryableError、AllModelsExhaustedError）和 __init__.py（导出全部异常）。构建通过，197 个已有测试全部通过。"
+          "detail": "Task 1 完成：requirements.txt 追加 chromadb>=0.4.0 + sentence-transformers>=2.0.0；新增 docker-compose.yml（Qdrant 服务 + Chroma 嵌入式说明注释）；新增 vector_store/exceptions.py（VectorStoreError / EmbeddingError / DimensionMismatchError，中文 docstring + 类型注解）。构建通过；测试 307 passed（收窄至 tests/ 目录，根目录 main_test.py 因缺飞书凭据属既有无关问题）。"
         }
       ],
-      "startedAt": "2026-07-23T07:36:56.949Z",
-      "completedAt": "2026-07-23T07:37:00.877Z"
+      "startedAt": "2026-09-01T03:46:26.243Z",
+      "completedAt": "2026-09-01T03:46:41.599Z"
     },
     {
       "index": 1,
-      "description": "实现 `RetryConfig` + tenacity 集成",
+      "description": "Task 2：数据模型 `document.py`",
       "acceptanceCriteria": [
-        "`RetryConfig` 支持 `max_attempts`、`backoff`（exponential/fixed/linear）、`min_wait`、`max_wait`",
-        "提供装饰器版本 `retry_decorator` 和编程式版本 `Retrying` 对象两种用法",
-        "区分可重试异常（TransientError）和不可重试异常（NonRetryableError）"
+        "`Document` dataclass：`text` / `metadata`（默认 `{}`）/ `id`（`None` 时在 `__post_init__` 生成 `uuid4().hex`）",
+        "`SearchResult` dataclass：`id` / `text` / `metadata` / `score`（越高越相似）/ `distance`（越低越近）"
       ],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-07-23T07:39:31.297Z",
+          "at": "2026-09-01T03:48:25.548Z",
           "result": "pass",
-          "detail": "实现了 retry.py：RetryConfig dataclass（3 种退避策略：exponential/fixed/linear）+ create_retry_decorator（声明式）+ build_retrying（编程式）。构建通过，197 个测试全部通过。"
+          "detail": "Task 2 完成：新增 vector_store/document.py，定义 Document（text/metadata/id，id=None 时 __post_init__ 用 uuid4().hex 生成 32 位 hex）与 SearchResult（id/text/metadata/score/distance）两个 dataclass，均含类型注解 + 中文 docstring。构建 compileall 通过；冒烟测试通过（id 长度 32、SearchResult 字段正常）。本任务未新增测试文件，全量 pytest 套件留待 Task 7 引入新测试时统一跑。"
         }
       ],
-      "startedAt": "2026-07-23T07:37:00.877Z",
-      "completedAt": "2026-07-23T07:39:31.297Z"
+      "startedAt": "2026-09-01T03:46:41.599Z",
+      "completedAt": "2026-09-01T03:48:25.548Z"
     },
     {
       "index": 2,
-      "description": "实现 `FallbackManager`",
+      "description": "Task 3：相似度 `distance.py`",
       "acceptanceCriteria": [
-        "接收 `list[BaseLLMClient]`，按顺序尝试调用",
-        "每个客户端内部使用 tenacity 重试（可配置）",
-        "记录每次切换行为（哪个模型失败、切到哪个）",
-        "所有客户端耗尽时抛出 `AllModelsExhaustedError`"
+        "`DistanceMetric(str, Enum)`：`COSINE` / `L2` / `IP`（值 `\"cosine\"` / `\"l2\"` / `\"ip\"`）",
+        "`cosine_similarity` / `dot_product` / `euclidean_distance` 纯函数",
+        "`distance_to_score(metric, distance)`：cosine→`1-distance`，ip→`-distance`，l2→`-distance`"
       ],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-07-23T07:43:01.256Z",
+          "at": "2026-09-01T03:49:46.728Z",
           "result": "pass",
-          "detail": "实现了 fallback.py：FallbackManager（按序尝试客户端、内置 tenacity 重试、NonRetryableError 中断、AllModelsExhaustedError 携带失败详情）+ execute_with_callbacks（3 个钩子给 metrics/cost 注入）。构建通过，197 个测试全绿。"
+          "detail": "Task 3 完成：新增 vector_store/distance.py，含 DistanceMetric(str,Enum)（COSINE/L2/IP 值为 Chroma 原生字符串）、dot_product / cosine_similarity / euclidean_distance 三个纯函数（长度校验抛 ValueError、空/零向量安全）、distance_to_score 距离→分数映射（COSINE→1-d、IP→-d、L2→-d）。均含中文 docstring + 类型注解，零第三方依赖。构建 compileall 通过；冒烟测试通过（cosine=0.0、dot=0.0、euclidean≈1.414214、distance_to_score(COSINE,1.0)=0.0）。无新增测试文件，全量套件留待 Task 7。"
         }
       ],
-      "startedAt": "2026-07-23T07:39:31.297Z",
-      "completedAt": "2026-07-23T07:43:01.256Z"
+      "startedAt": "2026-09-01T03:48:25.548Z",
+      "completedAt": "2026-09-01T03:49:46.728Z"
     },
     {
       "index": 3,
-      "description": "实现 `LLMMetrics`（prometheus_client）",
+      "description": "Task 4：Embedding 子包 `embeddings/`",
       "acceptanceCriteria": [
-        "定义 `llm_call_total`（Counter，按 model + status 分 label）",
-        "定义 `llm_token_usage_total`（Counter，按 model + type 分 label）",
-        "定义 `llm_latency_seconds`（Histogram，按 model 分 label）",
-        "`record_call()` 方法在一次调用后更新全部指标"
+        "`base.py` `EmbeddingClient(ABC)`：抽象 `dimension` 属性 + 抽象 `embed(texts)` + 默认 `aembed()`（`asyncio.to_thread(embed)`）",
+        "`openai_embedding.py` `OpenAIEmbedding`：默认 `text-embedding-3-small`（1536 维）、`dimensions` 可选、`api_key` 走 `os.environ`、同步 `embed` 用 `OpenAI`、`aembed` 用 `AsyncOpenAI`",
+        "`sentence_transformer.py` `SentenceTransformerEmbedding`：默认 `all-MiniLM-L6-v2`、懒 import + 懒加载模型（未装 torch 不影响包导入）",
+        "`embeddings/__init__.py` 显式导出"
       ],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-07-23T07:44:34.949Z",
+          "at": "2026-09-01T03:54:45.809Z",
           "result": "pass",
-          "detail": "实现了 metrics.py：LLMMetrics（prometheus_client Counter + Histogram，3 个指标：call_total/token_usage/latency_seconds），record_call/get_summary/reset 方法。构建通过，197 个测试全绿。"
+          "detail": "Task 4 完成：新增 vector_store/embeddings/ 子包 4 个文件（base.py / openai_embedding.py / sentence_transformer.py / __init__.py）。EmbeddingClient(ABC) 含抽象 dimension 属性 + 抽象 embed()，aembed() 为基类默认实现（asyncio.to_thread 包装，可被子类覆盖）；OpenAIEmbedding 默认 text-embedding-3-small（1536 维）、api_key 走环境变量、同步用 OpenAI / 异步用 AsyncOpenAI（懒创建客户端）；SentenceTransformerEmbedding 懒 import + 懒加载模型（未装 torch 也能 import）。构建 compileall 通过；冒烟测试通过（import OK、aembed 为协程、dimension 默认 1536/自定义 256、懒导入不触发 torch）。注：aft_inspect 的 14 条诊断均为 namespace package 解析噪声（vector_store/__init__.py 尚未创建，Task 6 后消失），非真实错误。"
         }
       ],
-      "startedAt": "2026-07-23T07:43:01.256Z",
-      "completedAt": "2026-07-23T07:44:34.949Z"
+      "startedAt": "2026-09-01T03:49:46.728Z",
+      "completedAt": "2026-09-01T03:54:45.809Z"
     },
     {
       "index": 4,
-      "description": "实现 `CostTracker`",
+      "description": "Task 5：`chroma_store.py` 实现 `VectorStore`",
       "acceptanceCriteria": [
-        "内置至少 4 个模型的定价表（gpt-4o、gpt-4o-mini、deepseek-chat、deepseek-reasoner）",
-        "根据 response 中的 `usage` 字段计算单次调用费用",
-        "支持累计费用查询 `get_total_cost()` 和按模型分组的费用查询 `get_cost_by_model()`"
+        "构造参数：`embedding` / `collection_name` / `metric` / `client`（可注入 mock）/ `persist_directory`（有则 `PersistentClient`）",
+        "懒创建 collection：首次 `add/query` 按 `embedding.dimension` 创建，维度与已存在 collection 不一致时抛 `DimensionMismatchError`",
+        "`add_documents(documents, chunk_size=100, concurrency=4)`：同步方法，内部 `asyncio.run` + `asyncio.Semaphore` 分片并发，返回 id 列表",
+        "`query` / `query_by_vector`（`k=5`，`where=None` 透传）返回 `list[SearchResult]`",
+        "`delete(ids)` / `count()`"
       ],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-07-23T07:45:48.572Z",
+          "at": "2026-09-01T04:01:46.148Z",
           "result": "pass",
-          "detail": "实现了 cost.py：CostTracker（4 模型定价表 gpt-4o/gpt-4o-mini/deepseek-chat/deepseek-reasoner）、calculate_cost/record_call 方法、累计/分组费用查询。构建通过，197 个测试全绿。"
+          "detail": "Task 5 完成：新增 vector_store/chroma_store.py，同时定义 VectorStore(ABC)（5 个抽象方法：add_documents/query/query_by_vector/delete/count）与 ChromaStore 实现。关键设计：chromadb 懒 import（注入 mock client 时无需安装 chromadb）、_ensure_client/_ensure_collection 懒初始化 + 维度校验（collection 已有数据时比对维度抛 DimensionMismatchError）、add_documents 同步门面（asyncio.run）+ aadd_documents 异步核心（Semaphore 分片并发、空 metadata 转 None）、query 经 distance_to_score 映射 distance→score。构建 compileall 通过；冒烟测试通过（VectorStore 抽象、ChromaStore 继承、5 个抽象方法齐全）。剩余 Pyright 诊断均为 vector_store/__init__.py 未建（Task 6）与 chromadb 未装的预期噪声。"
         }
       ],
-      "startedAt": "2026-07-23T07:44:34.949Z",
-      "completedAt": "2026-07-23T07:45:48.572Z"
+      "startedAt": "2026-09-01T03:54:45.809Z",
+      "completedAt": "2026-09-01T04:01:46.148Z"
     },
     {
       "index": 5,
-      "description": "实现 `LLMEngine` 统一入口 + Builder 模式",
+      "description": "Task 6：`vector_store/__init__.py`",
       "acceptanceCriteria": [
-        "`LLMEngine(primary, fallbacks, retry, metrics, cost_tracking)` 直接构造可用",
-        "`LLMEngine.builder()` 流式构造可用（学习 Builder 模式）",
-        "`chat()` 方法串联 Fallback → Retry → Metrics → Cost 全流程",
-        "`stream()` 方法预留接口，首版 raise NotImplementedError"
+        "显式 `__all__` 导出 `VectorStore`、`ChromaStore`、`EmbeddingClient`、`OpenAIEmbedding`、`SentenceTransformerEmbedding`、`Document`、`SearchResult`、`DistanceMetric`、异常"
       ],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-07-23T07:51:24.912Z",
+          "at": "2026-09-01T04:03:33.083Z",
           "result": "pass",
-          "detail": "实现了 engine.py：LLMEngine（直接构造 + Builder 双模式，chat() 串联 Fallback→Retry→Metrics→Cost 全流程，stream() 预留）+ LLMEngineBuilder（链式 API）。构建通过，197 个测试全绿。"
+          "detail": "Task 6 完成：新增 vector_store/__init__.py，模块 docstring + 显式 __all__ 导出 11 个符号（VectorStore/ChromaStore/EmbeddingClient/OpenAIEmbedding/SentenceTransformerEmbedding/Document/SearchResult/DistanceMetric/VectorStoreError/EmbeddingError/DimensionMismatchError）。构建 compileall 通过；`import vector_store` 成功且不触发 torch/chromadb 导入。vector_store 从命名空间包回归常规包，此前 namespace 解析噪声消失。剩余 Pyright 诊断均为项目根目录未配置为 source root 的误报，运行时已验证无误。"
         }
       ],
-      "startedAt": "2026-07-23T07:45:48.572Z",
-      "completedAt": "2026-07-23T07:51:24.912Z"
+      "startedAt": "2026-09-01T04:01:46.148Z",
+      "completedAt": "2026-09-01T04:03:33.083Z"
     },
     {
       "index": 6,
-      "description": "编写测试",
+      "description": "Task 7：单元测试（mock，离线）",
       "acceptanceCriteria": [
-        "`test_retry.py` — 验证 tenacity 两种方式、不同退避策略",
-        "`test_fallback.py` — 验证模型切换、全部耗尽场景、异常分类",
-        "`test_metrics.py` — 验证 Counter/Histogram 正确递增",
-        "`test_cost.py` — 验证定价计算准确、累计费用正确",
-        "`test_engine.py` — 验证端到端串联、Builder 模式"
+        "`tests/fakes.py` 提供 `HashEmbedding`（文本 hash → 固定维度向量，确定性）",
+        "`tests/test_document.py` / `test_distance.py` / `test_embeddings.py`（mock 后端）/ `test_chroma_store.py`（mock chroma client + mock embedding）",
+        "覆盖：懒创建 collection、维度不匹配抛错、分片并发调用次数、`distance_to_score` 映射、uuid 自动生成"
       ],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-07-23T07:56:08.012Z",
+          "at": "2026-09-01T04:12:14.734Z",
           "result": "pass",
-          "detail": "编写了 5 个测试文件：test_retry.py（22 测试）、test_fallback.py（17 测试）、test_metrics.py（14 测试）、test_cost.py（21 测试）、test_engine.py（24 测试）。总计 110 个新测试，+ 原有 197 个 = 307 个全部通过。"
+          "detail": "Task 7 完成：新增 5 个测试文件（tests/fakes.py 的 HashEmbedding + test_document.py/test_distance.py/test_embeddings.py/test_chroma_store.py），共 41 个测试，全部离线 mock、无需安装 chromadb/sentence-transformers。覆盖：Document uuid 自动生成、距离/相似度数值与边界、distance_to_score 三映射、EmbeddingClient 抽象 + aembed 默认实现、OpenAI/SentenceTransformer 双后端、ChromaStore 懒创建 collection/维度校验/250条分3片/空metadata转None/query映射/delete-count委托。全量测试 `python -m pytest tests/ -q`：348 passed（307 既有 + 41 新增）。注：@coder 发现并修复了被测代码 sentence_transformer.py 的一处真实 bug（`_model_name` → `model_name` 属性名拼写不一致，会导致懒加载时报 AttributeError），已确认修复正确（我核对了源码第 88 行）。"
         }
       ],
-      "startedAt": "2026-07-23T07:51:24.912Z",
-      "completedAt": "2026-07-23T07:56:08.012Z"
+      "startedAt": "2026-09-01T04:03:33.083Z",
+      "completedAt": "2026-09-01T04:12:14.734Z"
     },
     {
       "index": 7,
-      "description": "编写示例 `examples/llm_engine_demo.py`",
+      "description": "Task 8：集成 + 性能测试",
       "acceptanceCriteria": [
-        "启动 metrics HTTP server，暴露 `/metrics` 端点",
-        "模拟主模型失败 → 降级到备用模型的完整流程",
-        "用 curl 或浏览器可查看 Prometheus 指标"
+        "`tests/test_chroma_store_integration.py`（`@pytest.mark.integration`，真 `chromadb.Client()` 进程内 duckdb，可跳过）",
+        "`tests/test_perf.py`（`@pytest.mark.slow`，1000 条 `HashEmbedding`，测 QPS = 条数/秒 + 自监督召回 top-k 命中率）",
+        "`examples/vector_store_perf.py` 可独立运行并打印 QPS / 召回 / 耗时"
       ],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-07-23T07:59:04.211Z",
+          "at": "2026-09-01T04:33:10.964Z",
           "result": "pass",
-          "detail": "创建了 examples/llm_engine_demo.py（348 行，4 个演示：直接构造、Builder、Fallback+Retry、Metrics Server）。构建通过，307 个测试全部通过。"
+          "detail": "Task 8 完成（代码交付齐全，集成/性能执行受网络阻塞待后续跑）：新增 pytest.ini（注册 integration/slow 两个 marker）、tests/test_chroma_store_integration.py（5 用例，pytest.importorskip(\"chromadb\") + @integration，覆盖插入计数/top-1查询/向量查询结构/删除/维度不匹配）、tests/test_perf.py（1 用例，@slow，1000 条文档测 QPS=1000/耗时 + 自监督召回 top-5 命中率）、examples/vector_store_perf.py（独立脚本，含 chromadb 缺失友好提示）。构建 compileall 通过；全量测试 348 passed + 2 skipped（integration/perf 模块因 chromadb 未安装而优雅跳过，符合设计）。注：chromadb 安装因网络超时（onnxruntime/kubernetes 等大包下载中断）多次失败，正在后台断点续传重试；装好后需补跑 `pytest tests/test_chroma_store_integration.py tests/test_perf.py` 确认真实 chromadb 行为（尤其 top-1 distance≈0 与维度校验）。"
         }
       ],
-      "startedAt": "2026-07-23T07:56:08.012Z",
-      "completedAt": "2026-07-23T07:59:04.211Z"
+      "startedAt": "2026-09-01T04:12:14.734Z",
+      "completedAt": "2026-09-01T04:33:10.964Z"
     }
   ],
-  "completedAt": "2026-07-23T07:59:04.211Z"
+  "completedAt": "2026-09-01T04:33:10.964Z"
 }

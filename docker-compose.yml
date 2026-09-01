@@ -1,0 +1,39 @@
+# docker-compose 编排文件 —— 向量数据库服务
+#
+# 本项目（vector_store 包）计划同时支持两种向量数据库后端：
+#
+# 1. Qdrant —— 独立部署的向量数据库服务，需要通过容器运行，故在此声明服务。
+# 2. ChromaDB —— 嵌入式向量数据库，作为 Python 库进程内运行，
+#    无需独立服务进程，因此【不】在此处启动 Chroma 服务。
+#
+# 启动 Qdrant 服务：
+#     docker compose up -d
+#
+# 默认地址：http://localhost:6333（HTTP API 与 gRPC 均使用 6333 端口）。
+
+services:
+  # ---------------------------------------------------------------------------
+  # Qdrant 向量数据库服务
+  # ---------------------------------------------------------------------------
+  qdrant:
+    # Qdrant 官方镜像
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
+      # 宿主端口:容器端口
+      # 6333 端口同时承载 Qdrant 的 HTTP API 与 gRPC API
+      # 仅绑定到 127.0.0.1（本机回环），禁止暴露到外部网卡。
+      # 如需暴露到局域网/公网，必须额外配置 API Key 鉴权
+      # （QDRANT__SERVICE__API_KEY），避免未鉴权访问。
+      - "127.0.0.1:6333:6333"
+    volumes:
+      # 持久化 volume：挂载 Qdrant 数据目录，重启后数据不丢失
+      - qdrant_storage:/qdrant/storage
+    restart: unless-stopped
+
+# -----------------------------------------------------------------------------
+# 命名 volume 声明
+# -----------------------------------------------------------------------------
+volumes:
+  # Qdrant 数据持久化存储
+  qdrant_storage:
