@@ -7,3 +7,9 @@ tenacity>=8.0.0
 prometheus-client>=0.19.0
 chromadb>=0.4.0
 sentence-transformers>=2.0.0
+# document_processor（Day 7）：文档处理与分块
+pypdf>=4.0.0
+python-docx>=1.0.0
+langchain-text-splitters>=0.3.0
+# 可选依赖（懒导入，默认不安装）：需系统级 libmagic / poppler / tesseract。
+unstructured>=0.15.0  # 可选：需系统依赖，懒导入

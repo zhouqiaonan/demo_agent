@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "planFilename": "2026-09-01-feature-day-6-embedding-vector_store-.md",
-  "startedAt": "2026-09-01T03:42:06.025Z",
-  "buildCommand": "python -m compileall -q vector_store",
+  "planFilename": "2026-09-03-feature-day-7-document_processor-.md",
+  "startedAt": "2026-09-03T09:43:00.290Z",
+  "buildCommand": "python -m compileall document_processor vector_store",
   "testCommand": "python -m pytest tests/ -q",
   "lintCommand": null,
   "maxRetries": 3,
@@ -10,164 +10,195 @@
   "tasks": [
     {
       "index": 0,
-      "description": "Task 1：基础设施与包骨架",
+      "description": "包骨架 + 异常体系",
       "acceptanceCriteria": [
-        "`requirements.txt` 追加 `chromadb`、`sentence-transformers`（`openai`/`pytest` 已有）",
-        "根目录新增 `docker-compose.yml`，含 Qdrant 服务 + Chroma 的注释说明（不起 Chroma 服务）",
-        "创建 `vector_store/` 目录与 `exceptions.py`（`VectorStoreError` 基类 + `EmbeddingError` + `DimensionMismatchError`）"
+        "创建 `document_processor/` 目录结构，`exceptions.py` 定义 `DocumentProcessorError`（基类）及 `DocumentLoadError` / `DocumentSplitError` / `MetadataExtractionError` 三个子类",
+        "`__init__.py` 用中文 docstring 说明包定位，`__all__` 显式导出公开 API",
+        "所有类/方法含类型注解 + 中文文档字符串（项目规范）"
       ],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-09-01T03:46:41.599Z",
+          "at": "2026-09-03T09:47:53.148Z",
           "result": "pass",
-          "detail": "Task 1 完成：requirements.txt 追加 chromadb>=0.4.0 + sentence-transformers>=2.0.0；新增 docker-compose.yml（Qdrant 服务 + Chroma 嵌入式说明注释）；新增 vector_store/exceptions.py（VectorStoreError / EmbeddingError / DimensionMismatchError，中文 docstring + 类型注解）。构建通过；测试 307 passed（收窄至 tests/ 目录，根目录 main_test.py 因缺飞书凭据属既有无关问题）。"
+          "detail": "创建了 document_processor 包骨架（5 个文件）：exceptions.py 定义 DocumentProcessorError 基类 + DocumentLoadError/DocumentSplitError/MetadataExtractionError 三个子类；__init__.py 导出 4 个异常类；loaders/splitters/metadata 三个子包空壳。compileall 通过（无语法错误），包 import 正常，__all__ 正确。轻量单元测试 22 passed（test_document + test_distance），无回归。注意：全量 `pytest tests/` 因 slow/integration 测试 + 重依赖（chromadb/sentence-transformers）卡住，后续任务将改用 `-m \"not slow and not integration\"` 做快速验证。"
         }
       ],
-      "startedAt": "2026-09-01T03:46:26.243Z",
-      "completedAt": "2026-09-01T03:46:41.599Z"
+      "startedAt": "2026-09-03T09:43:04.774Z",
+      "completedAt": "2026-09-03T09:47:53.148Z"
     },
     {
       "index": 1,
-      "description": "Task 2：数据模型 `document.py`",
+      "description": "`DocumentLoader` 抽象 + `PdfLoader`",
       "acceptanceCriteria": [
-        "`Document` dataclass：`text` / `metadata`（默认 `{}`）/ `id`（`None` 时在 `__post_init__` 生成 `uuid4().hex`）",
-        "`SearchResult` dataclass：`id` / `text` / `metadata` / `score`（越高越相似）/ `distance`（越低越近）"
+        "`loaders/base.py` 定义 `DocumentLoader(ABC)`，抽象方法 `load() -> list[Document]`（复用 `vector_store.Document`）",
+        "`PdfLoader` 内部用 `PyPDFLoader` 加载，逐页产出 `Document`，metadata 含 `page`/`source`；LangChain `Document` 正确适配为 `vector_store.Document`",
+        "文件不存在/加载失败时抛 `DocumentLoadError`"
       ],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-09-01T03:48:25.548Z",
+          "at": "2026-09-03T10:00:52.143Z",
           "result": "pass",
-          "detail": "Task 2 完成：新增 vector_store/document.py，定义 Document（text/metadata/id，id=None 时 __post_init__ 用 uuid4().hex 生成 32 位 hex）与 SearchResult（id/text/metadata/score/distance）两个 dataclass，均含类型注解 + 中文 docstring。构建 compileall 通过；冒烟测试通过（id 长度 32、SearchResult 字段正常）。本任务未新增测试文件，全量 pytest 套件留待 Task 7 引入新测试时统一跑。"
+          "detail": "实现 DocumentLoader 抽象基类 + PdfLoader（pypdf 直连逐页抽取，懒导入，0-based 页码，跳过空白页，异常转 DocumentLoadError 链式）。依赖调整：PDF 用 pypdf 直连替代 langchain-community 的 PyPDFLoader（计划 Risk 表已预留，避免重依赖）。已安装 pypdf/python-docx/langchain-text-splitters。compileall 通过，import 通过，功能自测通过（文件不存在/非文件/空白页/含文本页均正确）。回归测试 318 passed（排除 test_session.py 的 tiktoken 网络下载卡顿 + slow/integration）。注：test_session.py 的 test_truncate_by_token_limit 因 tiktoken 首次联网下载 BPE 编码卡住，是既有环境问题，与本次无关。"
         }
       ],
-      "startedAt": "2026-09-01T03:46:41.599Z",
-      "completedAt": "2026-09-01T03:48:25.548Z"
+      "startedAt": "2026-09-03T09:47:53.148Z",
+      "completedAt": "2026-09-03T10:00:52.143Z"
     },
     {
       "index": 2,
-      "description": "Task 3：相似度 `distance.py`",
+      "description": "`WordLoader`",
       "acceptanceCriteria": [
-        "`DistanceMetric(str, Enum)`：`COSINE` / `L2` / `IP`（值 `\"cosine\"` / `\"l2\"` / `\"ip\"`）",
-        "`cosine_similarity` / `dot_product` / `euclidean_distance` 纯函数",
-        "`distance_to_score(metric, distance)`：cosine→`1-distance`，ip→`-distance`，l2→`-distance`"
+        "用 `python-docx` 遍历段落，产出 `Document`，metadata 含 `source`/`paragraph_index`；识别 Heading 样式填充 `section` 字段"
       ],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-09-01T03:49:46.728Z",
+          "at": "2026-09-03T10:02:47.250Z",
           "result": "pass",
-          "detail": "Task 3 完成：新增 vector_store/distance.py，含 DistanceMetric(str,Enum)（COSINE/L2/IP 值为 Chroma 原生字符串）、dot_product / cosine_similarity / euclidean_distance 三个纯函数（长度校验抛 ValueError、空/零向量安全）、distance_to_score 距离→分数映射（COSINE→1-d、IP→-d、L2→-d）。均含中文 docstring + 类型注解，零第三方依赖。构建 compileall 通过；冒烟测试通过（cosine=0.0、dot=0.0、euclidean≈1.414214、distance_to_score(COSINE,1.0)=0.0）。无新增测试文件，全量套件留待 Task 7。"
+          "detail": "实现 WordLoader（python-docx 懒导入，遍历段落，跳过空白段落，追踪 Heading/Title/Subtitle 样式更新 current_section，metadata 含 source/paragraph_index/section）。更新 loaders/__init__.py 和顶层 __init__.py 导出 WordLoader。compileall 通过，import 通过。回归测试 318 passed（4.49s）。E8 为 Pyright 对第三方依赖 pypdf/docx 的静态解析误报，运行时导入正常。"
         }
       ],
-      "startedAt": "2026-09-01T03:48:25.548Z",
-      "completedAt": "2026-09-01T03:49:46.728Z"
+      "startedAt": "2026-09-03T10:00:52.143Z",
+      "completedAt": "2026-09-03T10:02:47.250Z"
     },
     {
       "index": 3,
-      "description": "Task 4：Embedding 子包 `embeddings/`",
+      "description": "`TextSplitter` 抽象 + `RecursiveTextSplitter`",
       "acceptanceCriteria": [
-        "`base.py` `EmbeddingClient(ABC)`：抽象 `dimension` 属性 + 抽象 `embed(texts)` + 默认 `aembed()`（`asyncio.to_thread(embed)`）",
-        "`openai_embedding.py` `OpenAIEmbedding`：默认 `text-embedding-3-small`（1536 维）、`dimensions` 可选、`api_key` 走 `os.environ`、同步 `embed` 用 `OpenAI`、`aembed` 用 `AsyncOpenAI`",
-        "`sentence_transformer.py` `SentenceTransformerEmbedding`：默认 `all-MiniLM-L6-v2`、懒 import + 懒加载模型（未装 torch 不影响包导入）",
-        "`embeddings/__init__.py` 显式导出"
+        "`splitters/base.py` 定义 `TextSplitter(ABC)`：`split_text(text) -> list[str]` + `split_documents(docs) -> list[Document]`",
+        "`RecursiveTextSplitter(chunk_size, chunk_overlap, separators)` 委托 `langchain-text-splitters` 的 `RecursiveCharacterTextSplitter`，分割时保留原 metadata 并追加 `chunk_index`"
       ],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-09-01T03:54:45.809Z",
+          "at": "2026-09-03T10:06:40.590Z",
           "result": "pass",
-          "detail": "Task 4 完成：新增 vector_store/embeddings/ 子包 4 个文件（base.py / openai_embedding.py / sentence_transformer.py / __init__.py）。EmbeddingClient(ABC) 含抽象 dimension 属性 + 抽象 embed()，aembed() 为基类默认实现（asyncio.to_thread 包装，可被子类覆盖）；OpenAIEmbedding 默认 text-embedding-3-small（1536 维）、api_key 走环境变量、同步用 OpenAI / 异步用 AsyncOpenAI（懒创建客户端）；SentenceTransformerEmbedding 懒 import + 懒加载模型（未装 torch 也能 import）。构建 compileall 通过；冒烟测试通过（import OK、aembed 为协程、dimension 默认 1536/自定义 256、懒导入不触发 torch）。注：aft_inspect 的 14 条诊断均为 namespace package 解析噪声（vector_store/__init__.py 尚未创建，Task 6 后消失），非真实错误。"
+          "detail": "实现 TextSplitter 抽象基类（split_text 抽象 + split_documents 模板方法，metadata 透传追加 chunk_index）+ RecursiveTextSplitter（委托 langchain-text-splitters，chunk_size/chunk_overlap/separators 参数校验，默认中英混合分隔符，懒导入）。更新 splitters/__init__.py 和顶层 __init__.py 导出。compileall 通过，import 通过，分割功能验证通过。回归测试 318 passed（4.36s）。E13 为 Pyright 环境误报（LSP 未纳入项目根 import path），运行时正常。"
         }
       ],
-      "startedAt": "2026-09-01T03:49:46.728Z",
-      "completedAt": "2026-09-01T03:54:45.809Z"
+      "startedAt": "2026-09-03T10:02:47.250Z",
+      "completedAt": "2026-09-03T10:06:40.590Z"
     },
     {
       "index": 4,
-      "description": "Task 5：`chroma_store.py` 实现 `VectorStore`",
+      "description": "`SemanticSplitter`（复用 `EmbeddingClient`）",
       "acceptanceCriteria": [
-        "构造参数：`embedding` / `collection_name` / `metric` / `client`（可注入 mock）/ `persist_directory`（有则 `PersistentClient`）",
-        "懒创建 collection：首次 `add/query` 按 `embedding.dimension` 创建，维度与已存在 collection 不一致时抛 `DimensionMismatchError`",
-        "`add_documents(documents, chunk_size=100, concurrency=4)`：同步方法，内部 `asyncio.run` + `asyncio.Semaphore` 分片并发，返回 id 列表",
-        "`query` / `query_by_vector`（`k=5`，`where=None` 透传）返回 `list[SearchResult]`",
-        "`delete(ids)` / `count()`"
+        "按句切分 → 计算相邻句子 embedding 相似度 → 低于阈值处断句，参考 LlamaIndex 语义分块思路（自研，不引入 llama-index 重依赖）",
+        "构造注入 `EmbeddingClient`（可接 OpenAI/SentenceTransformer/HashEmbedding 任意后端），阈值/缓冲参数可配"
       ],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-09-01T04:01:46.148Z",
+          "at": "2026-09-03T10:09:49.590Z",
           "result": "pass",
-          "detail": "Task 5 完成：新增 vector_store/chroma_store.py，同时定义 VectorStore(ABC)（5 个抽象方法：add_documents/query/query_by_vector/delete/count）与 ChromaStore 实现。关键设计：chromadb 懒 import（注入 mock client 时无需安装 chromadb）、_ensure_client/_ensure_collection 懒初始化 + 维度校验（collection 已有数据时比对维度抛 DimensionMismatchError）、add_documents 同步门面（asyncio.run）+ aadd_documents 异步核心（Semaphore 分片并发、空 metadata 转 None）、query 经 distance_to_score 映射 distance→score。构建 compileall 通过；冒烟测试通过（VectorStore 抽象、ChromaStore 继承、5 个抽象方法齐全）。剩余 Pyright 诊断均为 vector_store/__init__.py 未建（Task 6）与 chromadb 未装的预期噪声。"
+          "detail": "实现 SemanticSplitter（自研语义分块，复用 EmbeddingClient）：按句切分 → 批量 embed → 相邻余弦相似度 → buffer_size 移动平均平滑 → 阈值断句 → 合并 chunk。参数校验（buffer_size>=1, 0<=threshold<=1）抛 DocumentSplitError，零向量防除零。更新 splitters/__init__.py 和顶层 __init__.py 导出。compileall 通过，import 通过，功能自测通过（HashEmbedding 下正确切分）。回归测试 318 passed（4.45s）。"
         }
       ],
-      "startedAt": "2026-09-01T03:54:45.809Z",
-      "completedAt": "2026-09-01T04:01:46.148Z"
+      "startedAt": "2026-09-03T10:06:40.590Z",
+      "completedAt": "2026-09-03T10:09:49.590Z"
     },
     {
       "index": 5,
-      "description": "Task 6：`vector_store/__init__.py`",
+      "description": "`MetadataExtractor` 抽象 + `BasicMetadataExtractor`",
       "acceptanceCriteria": [
-        "显式 `__all__` 导出 `VectorStore`、`ChromaStore`、`EmbeddingClient`、`OpenAIEmbedding`、`SentenceTransformerEmbedding`、`Document`、`SearchResult`、`DistanceMetric`、异常"
+        "`metadata/base.py` 定义 `MetadataExtractor(ABC)`，抽象方法 `extract(path) -> dict[str, Any]`",
+        "`BasicMetadataExtractor` 提取 `filename`/`file_type`/`size`/`modified_time`；PDF 追加 `page_count`；Word 追加 `sections`"
       ],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-09-01T04:03:33.083Z",
+          "at": "2026-09-03T10:12:56.944Z",
           "result": "pass",
-          "detail": "Task 6 完成：新增 vector_store/__init__.py，模块 docstring + 显式 __all__ 导出 11 个符号（VectorStore/ChromaStore/EmbeddingClient/OpenAIEmbedding/SentenceTransformerEmbedding/Document/SearchResult/DistanceMetric/VectorStoreError/EmbeddingError/DimensionMismatchError）。构建 compileall 通过；`import vector_store` 成功且不触发 torch/chromadb 导入。vector_store 从命名空间包回归常规包，此前 namespace 解析噪声消失。剩余 Pyright 诊断均为项目根目录未配置为 source root 的误报，运行时已验证无误。"
+          "detail": "实现 MetadataExtractor 抽象基类 + BasicMetadataExtractor（filename/file_type/size/modified_time 基础字段，PDF 追加 page_count，docx 追加 sections 保序去重，懒导入 pypdf/docx，异常转 MetadataExtractionError）。更新 metadata/__init__.py 和顶层 __init__.py 导出。compileall 通过，import 通过，功能自测通过（PDF page_count=2、docx sections=['第一章','第二章']）。回归测试 318 passed（4.46s）。"
         }
       ],
-      "startedAt": "2026-09-01T04:01:46.148Z",
-      "completedAt": "2026-09-01T04:03:33.083Z"
+      "startedAt": "2026-09-03T10:09:49.590Z",
+      "completedAt": "2026-09-03T10:12:56.944Z"
     },
     {
       "index": 6,
-      "description": "Task 7：单元测试（mock，离线）",
+      "description": "`UnstructuredMetadataExtractor`（懒导入可选后端）",
       "acceptanceCriteria": [
-        "`tests/fakes.py` 提供 `HashEmbedding`（文本 hash → 固定维度向量，确定性）",
-        "`tests/test_document.py` / `test_distance.py` / `test_embeddings.py`（mock 后端）/ `test_chroma_store.py`（mock chroma client + mock embedding）",
-        "覆盖：懒创建 collection、维度不匹配抛错、分片并发调用次数、`distance_to_score` 映射、uuid 自动生成"
+        "方法内 `import unstructured`（懒导入），用 `partition()` 提取章节/页码/标题/时间戳等",
+        "未安装 unstructured 时抛带清晰提示的 `MetadataExtractionError`"
       ],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-09-01T04:12:14.734Z",
+          "at": "2026-09-03T10:15:00.476Z",
           "result": "pass",
-          "detail": "Task 7 完成：新增 5 个测试文件（tests/fakes.py 的 HashEmbedding + test_document.py/test_distance.py/test_embeddings.py/test_chroma_store.py），共 41 个测试，全部离线 mock、无需安装 chromadb/sentence-transformers。覆盖：Document uuid 自动生成、距离/相似度数值与边界、distance_to_score 三映射、EmbeddingClient 抽象 + aembed 默认实现、OpenAI/SentenceTransformer 双后端、ChromaStore 懒创建 collection/维度校验/250条分3片/空metadata转None/query映射/delete-count委托。全量测试 `python -m pytest tests/ -q`：348 passed（307 既有 + 41 新增）。注：@coder 发现并修复了被测代码 sentence_transformer.py 的一处真实 bug（`_model_name` → `model_name` 属性名拼写不一致，会导致懒加载时报 AttributeError），已确认修复正确（我核对了源码第 88 行）。"
+          "detail": "实现 UnstructuredMetadataExtractor（懒导入 unstructured，未安装抛带清晰安装提示的 MetadataExtractionError；partition 提取 filename/file_type/elements_count/titles/headers/page_numbers，getattr 安全访问）。更新 metadata/__init__.py 和顶层 __init__.py 导出。compileall 通过，import 通过，未安装抛错分支验证通过。回归测试 318 passed（4.66s）。至此 loader/splitter/metadata 三组能力全部实现完毕。"
         }
       ],
-      "startedAt": "2026-09-01T04:03:33.083Z",
-      "completedAt": "2026-09-01T04:12:14.734Z"
+      "startedAt": "2026-09-03T10:12:56.944Z",
+      "completedAt": "2026-09-03T10:15:00.476Z"
     },
     {
       "index": 7,
-      "description": "Task 8：集成 + 性能测试",
+      "description": "单元测试（离线假文件）",
       "acceptanceCriteria": [
-        "`tests/test_chroma_store_integration.py`（`@pytest.mark.integration`，真 `chromadb.Client()` 进程内 duckdb，可跳过）",
-        "`tests/test_perf.py`（`@pytest.mark.slow`，1000 条 `HashEmbedding`，测 QPS = 条数/秒 + 自监督召回 top-k 命中率）",
-        "`examples/vector_store_perf.py` 可独立运行并打印 QPS / 召回 / 耗时"
+        "`tests/test_loaders.py` / `test_splitters.py` / `test_metadata.py`，用 `pypdf.PdfWriter` + `python-docx` 在 `tmp_path` 构造真实最小文件，全程离线",
+        "语义分块测试用 `HashEmbedding`（确定性）；递归分割测试验证 chunk 数/chunk_size/overlap/metadata 保留"
       ],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-09-01T04:33:10.964Z",
+          "at": "2026-09-03T10:23:09.565Z",
           "result": "pass",
-          "detail": "Task 8 完成（代码交付齐全，集成/性能执行受网络阻塞待后续跑）：新增 pytest.ini（注册 integration/slow 两个 marker）、tests/test_chroma_store_integration.py（5 用例，pytest.importorskip(\"chromadb\") + @integration，覆盖插入计数/top-1查询/向量查询结构/删除/维度不匹配）、tests/test_perf.py（1 用例，@slow，1000 条文档测 QPS=1000/耗时 + 自监督召回 top-5 命中率）、examples/vector_store_perf.py（独立脚本，含 chromadb 缺失友好提示）。构建 compileall 通过；全量测试 348 passed + 2 skipped（integration/perf 模块因 chromadb 未安装而优雅跳过，符合设计）。注：chromadb 安装因网络超时（onnxruntime/kubernetes 等大包下载中断）多次失败，正在后台断点续传重试；装好后需补跑 `pytest tests/test_chroma_store_integration.py tests/test_perf.py` 确认真实 chromadb 行为（尤其 top-1 distance≈0 与维度校验）。"
+          "detail": "编写 3 个测试文件（test_loaders.py / test_splitters.py / test_metadata.py），共 22 个测试用例，全程离线（pypdf.PdfWriter 空白页 + 手工最小含文本 PDF + docx.Document 构造）。覆盖：PdfLoader（文件不存在/目录/空白页跳过/文本提取+0-based page metadata）、WordLoader（段落+paragraph_index+Heading section 追踪）、RecursiveTextSplitter（参数校验/长文本分块/metadata 透传+chunk_index）、SemanticSplitter（单句/空文本/非法阈值/可控 fake embedding 验证语义断句 A A B→2 chunk）、BasicMetadataExtractor（PDF page_count/docx sections 去重）、UnstructuredMetadataExtractor（未安装抛错）。新测试 22 passed，全量回归 340 passed（4.41s，+22 无回归）。"
         }
       ],
-      "startedAt": "2026-09-01T04:12:14.734Z",
-      "completedAt": "2026-09-01T04:33:10.964Z"
+      "startedAt": "2026-09-03T10:15:00.476Z",
+      "completedAt": "2026-09-03T10:23:09.565Z"
+    },
+    {
+      "index": 8,
+      "description": "`examples/chunking_ab_test.py`（A/B 实验 + matplotlib）",
+      "acceptanceCriteria": [
+        "复用 `HashEmbedding` + `ChromaStore`，对比不同 `chunk_size`/`chunk_overlap` 的自监督召回率，matplotlib 画召回率曲线",
+        "独立可运行（`sys.path` 处理 + chromadb 依赖保护，风格同 `examples/vector_store_perf.py`）"
+      ],
+      "status": "passed",
+      "retries": 0,
+      "iterations": [
+        {
+          "at": "2026-09-03T10:37:57.001Z",
+          "result": "pass",
+          "detail": "编写 examples/chunking_ab_test.py A/B 实验脚本（sys.path 处理 + chromadb 依赖保护 + Agg 后端 matplotlib）。自监督召回设计基于 HashEmbedding 确定性哈希：chunk_size=50 单句分块时 query 向量==chunk 向量命中率 1.0，chunk_size 增大后因哈希雪崩 + 随机命中率≈k/chunk_count 呈现低位缓慢抬升。实测产出 6 组参数对比表 + 生成 examples/chunking_ab.png（70KB，中文正常渲染）。补装 matplotlib。回归测试 340 passed（4.99s）。注：@coder 如实修正了「recall 严格单调递减」的简化预期——真实曲线是「单句 1.0 悬崖 → 多句区间低位抬升」，符合 HashEmbedding 特性。"
+        }
+      ],
+      "startedAt": "2026-09-03T10:23:09.565Z",
+      "completedAt": "2026-09-03T10:37:57.002Z"
+    },
+    {
+      "index": 9,
+      "description": "依赖更新 + 文档产出",
+      "acceptanceCriteria": [
+        "`requirements.txt` 追加 `langchain-community`、`langchain-text-splitters`、`python-docx`、`pypdf`、`unstructured`",
+        "写 `docs/features/2026-09-03-document-processor-package.md`（含 mermaid 架构图）"
+      ],
+      "status": "passed",
+      "retries": 0,
+      "iterations": [
+        {
+          "at": "2026-09-03T10:40:22.413Z",
+          "result": "pass",
+          "detail": "更新 requirements.txt 追加 pypdf/python-docx/langchain-text-splitters/unstructured（含中文注释，未加 langchain-community 因 PDF 用 pypdf 直连）。生成特征文档 docs/features/2026-09-03-document-processor-package-document_processor.md（含 mermaid 架构图 + 数据流图 + 关键组件 + 用法 + A/B 实验观察 + 关键决策）。回归测试 340 passed（5.28s）。"
+        }
+      ],
+      "startedAt": "2026-09-03T10:37:57.002Z",
+      "completedAt": "2026-09-03T10:40:22.413Z"
     }
   ],
-  "completedAt": "2026-09-01T04:33:10.964Z"
+  "completedAt": "2026-09-03T10:40:22.413Z"
 }

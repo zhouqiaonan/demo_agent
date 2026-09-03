@@ -173,10 +173,18 @@ ids = asyncio.run(main())
 ## Related Files
 
 - `vector_store/__init__.py`
-- `vector_store/chroma_store.py`
 - `vector_store/document.py`
 - `vector_store/distance.py`
 - `vector_store/exceptions.py`
 - `vector_store/embeddings/base.py`
 - `vector_store/embeddings/openai_embedding.py`
 - `vector_store/embeddings/sentence_transformer.py`
+- `vector_store/chroma_store.py`
+- 
+- `tests/test_document.py     → 验证 Phase 1`
+- `tests/test_distance.py     → 验证 Phase 1（重点看distance_to_score三映射) `                                                                                                             
+- `tests/test_embeddings.py   → 验证 Phase 2（重点看懒加载怎么测)`
+- `tests/test_chroma_store.py → 验证 Phase 3（重点看 mock client + 分片/维度)`
+- `tests/test_chroma_store_integration.py → 真 chromadb 怎么跑通`
+- `tests/test_perf.py         → QPS/召回怎么测` 
+

@@ -284,12 +284,13 @@ class ChromaStore(VectorStore):
 
         # ---- 维度校验：仅当集合中已有数据时执行 ----
         if collection.count() > 0:
-            existing: dict[str, Any] = collection.get(
-                limit=1, include=["embeddings"]
-            )
-            existing_embeddings: list[Any] = existing.get("embeddings") or []
-            if existing_embeddings:
-                actual_dim: int = len(existing_embeddings[0])
+            existing = collection.get(limit=1, include=["embeddings"])
+            embeddings = existing.get("embeddings")
+            # chromadb 返回的 embeddings 可能是 numpy 数组，不能用 `or []`
+            # 判断真值（多元素数组会触发 "truth value ambiguous"），
+            # 这里显式判空：None 或长度为 0 都视为无既有向量。
+            if embeddings is not None and len(embeddings) > 0:
+                actual_dim: int = len(embeddings[0])
                 expected_dim: int = self._embedding.dimension
                 if actual_dim != expected_dim:
                     raise DimensionMismatchError(
