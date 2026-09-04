@@ -1,204 +1,173 @@
 {
   "version": 1,
-  "planFilename": "2026-09-03-feature-day-7-document_processor-.md",
-  "startedAt": "2026-09-03T09:43:00.290Z",
-  "buildCommand": "python -m compileall document_processor vector_store",
-  "testCommand": "python -m pytest tests/ -q",
+  "planFilename": "2026-09-04-feature-day-8-rag-rag-.md",
+  "startedAt": "2026-09-04T08:46:12.657Z",
+  "buildCommand": "python -m compileall rag vector_store document_processor",
+  "testCommand": "python -m pytest tests/ -q -m \"not slow and not integration\" --ignore=tests/test_session.py",
   "lintCommand": null,
   "maxRetries": 3,
   "currentTaskIndex": -1,
   "tasks": [
     {
       "index": 0,
-      "description": "包骨架 + 异常体系",
-      "acceptanceCriteria": [
-        "创建 `document_processor/` 目录结构，`exceptions.py` 定义 `DocumentProcessorError`（基类）及 `DocumentLoadError` / `DocumentSplitError` / `MetadataExtractionError` 三个子类",
-        "`__init__.py` 用中文 docstring 说明包定位，`__all__` 显式导出公开 API",
-        "所有类/方法含类型注解 + 中文文档字符串（项目规范）"
-      ],
+      "description": "包骨架 + 异常体系（RAGError 及子类）",
+      "acceptanceCriteria": [],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-09-03T09:47:53.148Z",
+          "at": "2026-09-04T08:47:29.911Z",
           "result": "pass",
-          "detail": "创建了 document_processor 包骨架（5 个文件）：exceptions.py 定义 DocumentProcessorError 基类 + DocumentLoadError/DocumentSplitError/MetadataExtractionError 三个子类；__init__.py 导出 4 个异常类；loaders/splitters/metadata 三个子包空壳。compileall 通过（无语法错误），包 import 正常，__all__ 正确。轻量单元测试 22 passed（test_document + test_distance），无回归。注意：全量 `pytest tests/` 因 slow/integration 测试 + 重依赖（chromadb/sentence-transformers）卡住，后续任务将改用 `-m \"not slow and not integration\"` 做快速验证。"
+          "detail": "创建 rag 包骨架（4 文件）：exceptions.py 定义 RAGError 基类 + RetrievalError/RerankError/PromptBuildError/RAGChainError 四个阶段异常；__init__.py 导出 5 个异常类；retrievers/rerankers 子包空壳。compileall 通过，import 通过，回归 348 passed（5.46s）。"
         }
       ],
-      "startedAt": "2026-09-03T09:43:04.774Z",
-      "completedAt": "2026-09-03T09:47:53.148Z"
+      "startedAt": "2026-09-04T08:46:17.354Z",
+      "completedAt": "2026-09-04T08:47:29.911Z"
     },
     {
       "index": 1,
-      "description": "`DocumentLoader` 抽象 + `PdfLoader`",
-      "acceptanceCriteria": [
-        "`loaders/base.py` 定义 `DocumentLoader(ABC)`，抽象方法 `load() -> list[Document]`（复用 `vector_store.Document`）",
-        "`PdfLoader` 内部用 `PyPDFLoader` 加载，逐页产出 `Document`，metadata 含 `page`/`source`；LangChain `Document` 正确适配为 `vector_store.Document`",
-        "文件不存在/加载失败时抛 `DocumentLoadError`"
-      ],
+      "description": "`Retriever` 抽象 + `VectorRetriever`（复用 ChromaStore）",
+      "acceptanceCriteria": [],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-09-03T10:00:52.143Z",
+          "at": "2026-09-04T08:49:37.085Z",
           "result": "pass",
-          "detail": "实现 DocumentLoader 抽象基类 + PdfLoader（pypdf 直连逐页抽取，懒导入，0-based 页码，跳过空白页，异常转 DocumentLoadError 链式）。依赖调整：PDF 用 pypdf 直连替代 langchain-community 的 PyPDFLoader（计划 Risk 表已预留，避免重依赖）。已安装 pypdf/python-docx/langchain-text-splitters。compileall 通过，import 通过，功能自测通过（文件不存在/非文件/空白页/含文本页均正确）。回归测试 318 passed（排除 test_session.py 的 tiktoken 网络下载卡顿 + slow/integration）。注：test_session.py 的 test_truncate_by_token_limit 因 tiktoken 首次联网下载 BPE 编码卡住，是既有环境问题，与本次无关。"
+          "detail": "实现 Retriever 抽象基类（retrieve(query, k=5) -> list[SearchResult]，复用 vector_store.SearchResult）+ VectorRetriever（依赖注入 ChromaStore，纯委托 store.query）。更新 retrievers/__init__.py 和顶层 __init__.py 导出。compileall 通过，import 通过，回归 348 passed（5.28s）。"
         }
       ],
-      "startedAt": "2026-09-03T09:47:53.148Z",
-      "completedAt": "2026-09-03T10:00:52.143Z"
+      "startedAt": "2026-09-04T08:47:29.911Z",
+      "completedAt": "2026-09-04T08:49:37.085Z"
     },
     {
       "index": 2,
-      "description": "`WordLoader`",
-      "acceptanceCriteria": [
-        "用 `python-docx` 遍历段落，产出 `Document`，metadata 含 `source`/`paragraph_index`；识别 Heading 样式填充 `section` 字段"
-      ],
+      "description": "`KeywordRetriever`（手写 BM25 + 字符 bigram）",
+      "acceptanceCriteria": [],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-09-03T10:02:47.250Z",
+          "at": "2026-09-04T08:52:10.963Z",
           "result": "pass",
-          "detail": "实现 WordLoader（python-docx 懒导入，遍历段落，跳过空白段落，追踪 Heading/Title/Subtitle 样式更新 current_section，metadata 含 source/paragraph_index/section）。更新 loaders/__init__.py 和顶层 __init__.py 导出 WordLoader。compileall 通过，import 通过。回归测试 318 passed（4.49s）。E8 为 Pyright 对第三方依赖 pypdf/docx 的静态解析误报，运行时导入正常。"
+          "detail": "实现 KeywordRetriever（手写 BM25：字符 bigram 分词 + IDF + k1 词频饱和 + b 长度归一化，构建内存倒排索引 tf/df/doc_len/avgdl，检索时 BM25 打分取 top-k，distance=-score）。更新 __init__.py 导出。compileall 通过，import 通过，sanity-check 正确（含两个词项的文档排第一），回归 348 passed（6.11s）。"
         }
       ],
-      "startedAt": "2026-09-03T10:00:52.143Z",
-      "completedAt": "2026-09-03T10:02:47.250Z"
+      "startedAt": "2026-09-04T08:49:37.085Z",
+      "completedAt": "2026-09-04T08:52:10.963Z"
     },
     {
       "index": 3,
-      "description": "`TextSplitter` 抽象 + `RecursiveTextSplitter`",
-      "acceptanceCriteria": [
-        "`splitters/base.py` 定义 `TextSplitter(ABC)`：`split_text(text) -> list[str]` + `split_documents(docs) -> list[Document]`",
-        "`RecursiveTextSplitter(chunk_size, chunk_overlap, separators)` 委托 `langchain-text-splitters` 的 `RecursiveCharacterTextSplitter`，分割时保留原 metadata 并追加 `chunk_index`"
-      ],
+      "description": "`HybridRetriever`（RRF 融合）",
+      "acceptanceCriteria": [],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-09-03T10:06:40.590Z",
+          "at": "2026-09-04T08:54:35.940Z",
           "result": "pass",
-          "detail": "实现 TextSplitter 抽象基类（split_text 抽象 + split_documents 模板方法，metadata 透传追加 chunk_index）+ RecursiveTextSplitter（委托 langchain-text-splitters，chunk_size/chunk_overlap/separators 参数校验，默认中英混合分隔符，懒导入）。更新 splitters/__init__.py 和顶层 __init__.py 导出。compileall 通过，import 通过，分割功能验证通过。回归测试 318 passed（4.36s）。E13 为 Pyright 环境误报（LSP 未纳入项目根 import path），运行时正常。"
+          "detail": "实现 HybridRetriever（RRF 融合：多检索器组合，RRF(d)=Σ1/(60+rank) 按 id 去重累加，多路认可加分，按 RRF 分数降序取 top-k）。校验 retrievers 非空/rrf_k>0 抛 RetrievalError。更新 __init__.py 导出。compileall 通过，import 通过，sanity-check 正确（多路命中者综合排名最高），回归 348 passed（5.52s）。"
         }
       ],
-      "startedAt": "2026-09-03T10:02:47.250Z",
-      "completedAt": "2026-09-03T10:06:40.590Z"
+      "startedAt": "2026-09-04T08:52:10.964Z",
+      "completedAt": "2026-09-04T08:54:35.940Z"
     },
     {
       "index": 4,
-      "description": "`SemanticSplitter`（复用 `EmbeddingClient`）",
-      "acceptanceCriteria": [
-        "按句切分 → 计算相邻句子 embedding 相似度 → 低于阈值处断句，参考 LlamaIndex 语义分块思路（自研，不引入 llama-index 重依赖）",
-        "构造注入 `EmbeddingClient`（可接 OpenAI/SentenceTransformer/HashEmbedding 任意后端），阈值/缓冲参数可配"
-      ],
+      "description": "`ReRanker` 抽象 + `CrossEncoderReRanker`（懒加载）",
+      "acceptanceCriteria": [],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-09-03T10:09:49.590Z",
+          "at": "2026-09-04T08:56:44.566Z",
           "result": "pass",
-          "detail": "实现 SemanticSplitter（自研语义分块，复用 EmbeddingClient）：按句切分 → 批量 embed → 相邻余弦相似度 → buffer_size 移动平均平滑 → 阈值断句 → 合并 chunk。参数校验（buffer_size>=1, 0<=threshold<=1）抛 DocumentSplitError，零向量防除零。更新 splitters/__init__.py 和顶层 __init__.py 导出。compileall 通过，import 通过，功能自测通过（HashEmbedding 下正确切分）。回归测试 318 passed（4.45s）。"
+          "detail": "实现 ReRanker 抽象基类（rerank(query, results) -> list[SearchResult]）+ CrossEncoderReRanker（懒加载 sentence-transformers cross-encoder，predict 打分降序重排，distance=-score，懒加载失败抛 RerankError）。更新 __init__.py 导出。compileall 通过，import 通过，空结果返回 [] 验证通过，回归 348 passed（5.31s）。"
         }
       ],
-      "startedAt": "2026-09-03T10:06:40.590Z",
-      "completedAt": "2026-09-03T10:09:49.590Z"
+      "startedAt": "2026-09-04T08:54:35.940Z",
+      "completedAt": "2026-09-04T08:56:44.566Z"
     },
     {
       "index": 5,
-      "description": "`MetadataExtractor` 抽象 + `BasicMetadataExtractor`",
-      "acceptanceCriteria": [
-        "`metadata/base.py` 定义 `MetadataExtractor(ABC)`，抽象方法 `extract(path) -> dict[str, Any]`",
-        "`BasicMetadataExtractor` 提取 `filename`/`file_type`/`size`/`modified_time`；PDF 追加 `page_count`；Word 追加 `sections`"
-      ],
+      "description": "`PromptBuilder`（带 [n] 引用 + 映射表）",
+      "acceptanceCriteria": [],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-09-03T10:12:56.944Z",
+          "at": "2026-09-04T08:58:33.913Z",
           "result": "pass",
-          "detail": "实现 MetadataExtractor 抽象基类 + BasicMetadataExtractor（filename/file_type/size/modified_time 基础字段，PDF 追加 page_count，docx 追加 sections 保序去重，懒导入 pypdf/docx，异常转 MetadataExtractionError）。更新 metadata/__init__.py 和顶层 __init__.py 导出。compileall 通过，import 通过，功能自测通过（PDF page_count=2、docx sections=['第一章','第二章']）。回归测试 318 passed（4.46s）。"
+          "detail": "实现 PromptBuilder + RAGPrompt dataclass（把 chunks 拼成带 [n] 编号的 prompt，返回引用映射表 {编号: {source, page, text}}，空 chunks 抛 PromptBuildError）。更新 __init__.py 导出。compileall 通过，import 通过，sanity-check 正确（[1][2] 编号 + 映射齐全），回归 348 passed（5.65s）。"
         }
       ],
-      "startedAt": "2026-09-03T10:09:49.590Z",
-      "completedAt": "2026-09-03T10:12:56.944Z"
+      "startedAt": "2026-09-04T08:56:44.566Z",
+      "completedAt": "2026-09-04T08:58:33.913Z"
     },
     {
       "index": 6,
-      "description": "`UnstructuredMetadataExtractor`（懒导入可选后端）",
-      "acceptanceCriteria": [
-        "方法内 `import unstructured`（懒导入），用 `partition()` 提取章节/页码/标题/时间戳等",
-        "未安装 unstructured 时抛带清晰提示的 `MetadataExtractionError`"
-      ],
+      "description": "`RAGChain`（端到端编排）",
+      "acceptanceCriteria": [],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-09-03T10:15:00.476Z",
+          "at": "2026-09-04T09:01:00.135Z",
           "result": "pass",
-          "detail": "实现 UnstructuredMetadataExtractor（懒导入 unstructured，未安装抛带清晰安装提示的 MetadataExtractionError；partition 提取 filename/file_type/elements_count/titles/headers/page_numbers，getattr 安全访问）。更新 metadata/__init__.py 和顶层 __init__.py 导出。compileall 通过，import 通过，未安装抛错分支验证通过。回归测试 318 passed（4.66s）。至此 loader/splitter/metadata 三组能力全部实现完毕。"
+          "detail": "实现 RAGChain（端到端编排：检索→可选重排→构建 prompt→LLM 生成→返回引用）+ RAGAnswer dataclass（answer + references）。异常处理：RAGError 子类自然传播，其他异常包装 RAGChainError。更新 __init__.py 导出（rag 包全部实现完毕）。compileall 通过，import 通过，sanity-check 正确（answer + references 来自 PromptBuilder，异常传播/包装验证通过），回归 348 passed（5.29s）。"
         }
       ],
-      "startedAt": "2026-09-03T10:12:56.944Z",
-      "completedAt": "2026-09-03T10:15:00.476Z"
+      "startedAt": "2026-09-04T08:58:33.913Z",
+      "completedAt": "2026-09-04T09:01:00.135Z"
     },
     {
       "index": 7,
-      "description": "单元测试（离线假文件）",
-      "acceptanceCriteria": [
-        "`tests/test_loaders.py` / `test_splitters.py` / `test_metadata.py`，用 `pypdf.PdfWriter` + `python-docx` 在 `tmp_path` 构造真实最小文件，全程离线",
-        "语义分块测试用 `HashEmbedding`（确定性）；递归分割测试验证 chunk 数/chunk_size/overlap/metadata 保留"
-      ],
+      "description": "单元测试（离线 fake）",
+      "acceptanceCriteria": [],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-09-03T10:23:09.565Z",
+          "at": "2026-09-04T09:06:19.479Z",
           "result": "pass",
-          "detail": "编写 3 个测试文件（test_loaders.py / test_splitters.py / test_metadata.py），共 22 个测试用例，全程离线（pypdf.PdfWriter 空白页 + 手工最小含文本 PDF + docx.Document 构造）。覆盖：PdfLoader（文件不存在/目录/空白页跳过/文本提取+0-based page metadata）、WordLoader（段落+paragraph_index+Heading section 追踪）、RecursiveTextSplitter（参数校验/长文本分块/metadata 透传+chunk_index）、SemanticSplitter（单句/空文本/非法阈值/可控 fake embedding 验证语义断句 A A B→2 chunk）、BasicMetadataExtractor（PDF page_count/docx sections 去重）、UnstructuredMetadataExtractor（未安装抛错）。新测试 22 passed，全量回归 340 passed（4.41s，+22 无回归）。"
+          "detail": "编写 4 个测试文件（test_rag_retrievers/test_rag_rerankers/test_rag_prompt/test_rag_chain.py），共 20 个用例，全程离线（MagicMock + fake）。覆盖：VectorRetriever 委托、KeywordRetriever BM25 排序/空语料/bigram、HybridRetriever RRF 融合/参数校验、CrossEncoderReRanker 空结果/懒加载失败抛错、PromptBuilder 引用映射/空 chunks 抛错/metadata 回退、RAGChain 端到端/reranker 可选/异常传播与包装。新测试 20 passed，全量回归 368 passed（5.57s，+20 无回归）。"
         }
       ],
-      "startedAt": "2026-09-03T10:15:00.476Z",
-      "completedAt": "2026-09-03T10:23:09.565Z"
+      "startedAt": "2026-09-04T09:01:00.135Z",
+      "completedAt": "2026-09-04T09:06:19.479Z"
     },
     {
       "index": 8,
-      "description": "`examples/chunking_ab_test.py`（A/B 实验 + matplotlib）",
-      "acceptanceCriteria": [
-        "复用 `HashEmbedding` + `ChromaStore`，对比不同 `chunk_size`/`chunk_overlap` 的自监督召回率，matplotlib 画召回率曲线",
-        "独立可运行（`sys.path` 处理 + chromadb 依赖保护，风格同 `examples/vector_store_perf.py`）"
-      ],
+      "description": "端到端测试（mock LLM + 引用准确性验证）",
+      "acceptanceCriteria": [],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-09-03T10:37:57.001Z",
+          "at": "2026-09-04T09:10:04.092Z",
           "result": "pass",
-          "detail": "编写 examples/chunking_ab_test.py A/B 实验脚本（sys.path 处理 + chromadb 依赖保护 + Agg 后端 matplotlib）。自监督召回设计基于 HashEmbedding 确定性哈希：chunk_size=50 单句分块时 query 向量==chunk 向量命中率 1.0，chunk_size 增大后因哈希雪崩 + 随机命中率≈k/chunk_count 呈现低位缓慢抬升。实测产出 6 组参数对比表 + 生成 examples/chunking_ab.png（70KB，中文正常渲染）。补装 matplotlib。回归测试 340 passed（4.99s）。注：@coder 如实修正了「recall 严格单调递减」的简化预期——真实曲线是「单句 1.0 悬崖 → 多句区间低位抬升」，符合 HashEmbedding 特性。"
+          "detail": "编写 test_rag_e2e.py 端到端测试（3 用例，真实内存 chromadb + 真实检索组件 + mock LLM，integration marker）。覆盖：端到端引用准确性（引用的 chunk 含目标关键词 + source 正确）、引用编号连续、混合检索中 BM25 关键词路的价值（HashEmbedding 向量检索命中不准时，BM25 仍命中目标文档）。3 个 e2e 测试 passed（2.53s），全量回归 368 passed（6.96s）。"
         }
       ],
-      "startedAt": "2026-09-03T10:23:09.565Z",
-      "completedAt": "2026-09-03T10:37:57.002Z"
+      "startedAt": "2026-09-04T09:06:19.479Z",
+      "completedAt": "2026-09-04T09:10:04.092Z"
     },
     {
       "index": 9,
-      "description": "依赖更新 + 文档产出",
-      "acceptanceCriteria": [
-        "`requirements.txt` 追加 `langchain-community`、`langchain-text-splitters`、`python-docx`、`pypdf`、`unstructured`",
-        "写 `docs/features/2026-09-03-document-processor-package.md`（含 mermaid 架构图）"
-      ],
+      "description": "文档产出",
+      "acceptanceCriteria": [],
       "status": "passed",
       "retries": 0,
       "iterations": [
         {
-          "at": "2026-09-03T10:40:22.413Z",
+          "at": "2026-09-04T09:10:36.765Z",
           "result": "pass",
-          "detail": "更新 requirements.txt 追加 pypdf/python-docx/langchain-text-splitters/unstructured（含中文注释，未加 langchain-community 因 PDF 用 pypdf 直连）。生成特征文档 docs/features/2026-09-03-document-processor-package-document_processor.md（含 mermaid 架构图 + 数据流图 + 关键组件 + 用法 + A/B 实验观察 + 关键决策）。回归测试 340 passed（5.28s）。"
+          "detail": "生成 rag 包特征文档 docs/features/2026-09-04-rag-package-rag.md（含 mermaid 架构图 + 数据流图 + 关键组件表 + 用法示例 + 5 条 Key Decisions + 测试说明）。无代码变更，回归 368 passed（前序已验证）。"
         }
       ],
-      "startedAt": "2026-09-03T10:37:57.002Z",
-      "completedAt": "2026-09-03T10:40:22.413Z"
+      "startedAt": "2026-09-04T09:10:04.092Z",
+      "completedAt": "2026-09-04T09:10:36.765Z"
     }
   ],
-  "completedAt": "2026-09-03T10:40:22.413Z"
+  "completedAt": "2026-09-04T09:10:36.765Z"
 }
